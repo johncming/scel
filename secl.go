@@ -13,25 +13,23 @@ type Scel struct {
 	Data []byte
 
 	PyTable map[uint16]string
+
+	wordPyMap map[string]struct{}
+	WordPy    []string
 }
 
 func NewScel(data []byte) *Scel {
 	return &Scel{
-		Data:    data,
-		PyTable: make(map[uint16]string),
+		Data:      data,
+		PyTable:   make(map[uint16]string),
+		wordPyMap: make(map[string]struct{}),
 	}
 }
 
 var SougouTag = []byte{0x40, 0x15, 0x00, 0x00, 0x44, 0x43, 0x53, 0x01, 0x01, 0x00, 0x00, 0x00}
 
 func (s *Scel) IsValid() bool {
-	data := s.Data
-
-	if !reflect.DeepEqual(data[:12], SougouTag) {
-		return true
-	}
-
-	return false
+	return reflect.DeepEqual(s.Data[:12], SougouTag)
 }
 
 // UTF-16
@@ -65,6 +63,11 @@ func (s *Scel) Run() (err error) {
 	}
 
 	err = s.genPyTable()
+	if err != nil {
+		return err
+	}
+
+	err = s.genChinese()
 	if err != nil {
 		return err
 	}
@@ -123,4 +126,93 @@ func (s *Scel) genPyTable() error {
 	}
 
 	return nil
+}
+
+func (s *Scel) genChinese() error {
+	var same, pyTableLen uint16
+	var cLen, extLen uint16
+	var err error
+
+	data := s.Data[0x2628:]
+	r := bytes.NewReader(data)
+
+out:
+	for {
+		err = binary.Read(r, binary.LittleEndian, &same)
+		if err != nil {
+			break
+		}
+
+		err = binary.Read(r, binary.LittleEndian, &pyTableLen)
+		if err != nil {
+			break
+		}
+
+		buf := make([]byte, pyTableLen)
+		_, err = r.Read(buf)
+		if err != nil {
+			break
+		}
+
+		py, err := s.genWordPy(buf)
+		if err != nil {
+			break
+		}
+
+		if _, ok := s.wordPyMap[py]; !ok {
+			s.wordPyMap[py] = struct{}{}
+			s.WordPy = append(s.WordPy, py)
+		}
+
+		for i := 0; i < int(same); i++ {
+			err = binary.Read(r, binary.LittleEndian, &cLen)
+			if err != nil {
+				break out
+			}
+
+			_, err = r.Seek(int64(cLen), io.SeekCurrent)
+			if err != nil {
+				break out
+			}
+
+			err = binary.Read(r, binary.LittleEndian, &extLen)
+			if err != nil {
+				break out
+			}
+
+			_, err = r.Seek(int64(extLen), io.SeekCurrent)
+			if err != nil {
+				break out
+			}
+		}
+	}
+
+	if err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Scel) genWordPy(data []byte) (string, error) {
+	var index uint16
+	var err error
+	var ret string
+
+	r := bytes.NewReader(data)
+
+	for {
+		err = binary.Read(r, binary.LittleEndian, &index)
+		if err != nil {
+			break
+		}
+
+		ret += s.PyTable[index]
+	}
+
+	if err != io.EOF {
+		return "", err
+	}
+
+	return ret, nil
 }
