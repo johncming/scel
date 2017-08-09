@@ -36,7 +36,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	output, err := json.Marshal(scel.WordPy)
+	output, err := json.Marshal(scel.WordPyMap)
 	if err != nil {
 		log.Fatalln(err)
 	}
