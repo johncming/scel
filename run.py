@@ -126,11 +126,10 @@ def getChinese(data):
         # 拼音索引表长度
         pos += 2
         py_table_len = struct.unpack('H', data[pos] + data[pos + 1])[0]
+
         # 拼音索引表
         pos += 2
         py = getWordPy(data[pos: pos + py_table_len])
-
-        import pdb; pdb.set_trace()
 
         # 中文词组
         pos += py_table_len
@@ -193,4 +192,4 @@ if __name__ == '__main__':
         f.write('\n')
     f.close()
 
-    print GPy_Table
+    print GTable

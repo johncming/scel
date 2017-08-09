@@ -14,7 +14,7 @@ type Scel struct {
 
 	PyTable map[uint16]string
 
-	wordPyMap map[string]struct{}
+	WordPyMap map[string][]string
 	WordPy    []string
 }
 
@@ -22,7 +22,7 @@ func NewScel(data []byte) *Scel {
 	return &Scel{
 		Data:      data,
 		PyTable:   make(map[uint16]string),
-		wordPyMap: make(map[string]struct{}),
+		WordPyMap: make(map[string][]string),
 	}
 }
 
@@ -159,10 +159,12 @@ out:
 			break
 		}
 
-		if _, ok := s.wordPyMap[py]; !ok {
-			s.wordPyMap[py] = struct{}{}
+		if _, ok := s.WordPyMap[py]; !ok {
+			s.WordPyMap[py] = []string{}
 			s.WordPy = append(s.WordPy, py)
 		}
+
+		var tmp []byte
 
 		for i := 0; i < int(same); i++ {
 			err = binary.Read(r, binary.LittleEndian, &cLen)
@@ -170,10 +172,17 @@ out:
 				break out
 			}
 
-			_, err = r.Seek(int64(cLen), io.SeekCurrent)
+			tmp = make([]byte, cLen)
+			_, err = r.Read(tmp)
 			if err != nil {
 				break out
 			}
+
+			word, err := byte2str(tmp)
+			if err != nil {
+				break out
+			}
+			s.WordPyMap[py] = append(s.WordPyMap[py], word)
 
 			err = binary.Read(r, binary.LittleEndian, &extLen)
 			if err != nil {
