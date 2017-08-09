@@ -10,7 +10,7 @@ import (
 
 	"flag"
 
-	"bitbucket.org/johncming/scel"
+	"github.com/johncming/scel"
 )
 
 var scelPath string
@@ -36,7 +36,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	output, err := json.Marshal(scel.WordPyMap)
+	output, err := json.MarshalIndent(scel.WordPyMap, "", "    ")
 	if err != nil {
 		log.Fatalln(err)
 	}
